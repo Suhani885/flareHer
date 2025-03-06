@@ -1,0 +1,1 @@
+// Detailed product view modal
