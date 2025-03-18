@@ -3,30 +3,64 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  MapPin,
+  Phone,
+  Briefcase,
+} from "lucide-react";
+import Image from "next/image";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import logo from "../../../../../public/logo.png";
+import { Color } from "../../../utils/Colors";
+import { Constant, ApiEndpoints } from "../../../utils/ApiConst";
 
-export default function EntrepreneurSignupPage() {
+export default function OrgReg() {
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
+    phoneNumber: "",
     password: "",
     confirmPassword: "",
     businessName: "",
+    address: "",
     businessType: "",
     productCategories: [],
-    experience: "",
-    phone: "",
-    agreeTerms: false,
-    agreeSellerPolicy: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    password: "",
+    confirmPassword: "",
+    businessName: "",
+    address: "",
+    businessType: "",
+    productCategories: "",
+    terms: "",
+  });
   const router = useRouter();
 
   const businessTypes = [
     "Individual Seller",
     "Small Business",
     "Established Brand",
+    "Startup",
+    "Non-profit",
+    "Enterprise",
   ];
+
   const productCategories = [
     "Skincare",
     "Haircare",
@@ -39,24 +73,16 @@ export default function EntrepreneurSignupPage() {
     "Soaps",
     "Other",
   ];
-  const experienceLevels = [
-    "Beginner",
-    "Intermediate",
-    "Advanced",
-    "Professional",
-  ];
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const passwordRegex = /(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W).{8,16}/;
+  const phoneRegex = /^\+?[0-9]{10,15}$/;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
     if (type === "checkbox") {
-      if (name === "agreeTerms" || name === "agreeSellerPolicy") {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: checked,
-        }));
-      } else {
-        // Handle product categories checkboxes
+      if (name === "productCategories") {
         setFormData((prev) => {
           const updatedCategories = [...prev.productCategories];
           if (checked) {
@@ -72,498 +98,811 @@ export default function EntrepreneurSignupPage() {
             productCategories: updatedCategories,
           };
         });
+      } else {
+        setTermsAccepted(checked);
       }
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData({ ...formData, [name]: value });
+    }
+
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
     }
   };
 
   const validateForm = () => {
-    if (
-      !formData.fullName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.businessName
-    ) {
-      setError("Name, email, password and business name are required");
-      return false;
+    let isValid = true;
+    const newErrors = { ...errors };
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First name is required";
+      isValid = false;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match");
-      return false;
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+      isValid = false;
     }
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return false;
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
+      isValid = false;
+    } else if (!phoneRegex.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "Please enter a valid phone number";
+      isValid = false;
+    }
+
+    if (!formData.businessName.trim()) {
+      newErrors.businessName = "Business name is required";
+      isValid = false;
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+      isValid = false;
+    }
+
+    if (!formData.businessType) {
+      newErrors.businessType = "Business type is required";
+      isValid = false;
     }
 
     if (formData.productCategories.length === 0) {
-      setError("Please select at least one product category");
-      return false;
+      newErrors.productCategories =
+        "Please select at least one product category";
+      isValid = false;
     }
 
-    if (!formData.agreeTerms || !formData.agreeSellerPolicy) {
-      setError(
-        "You must agree to both the Terms and Conditions and Seller Policy"
-      );
-      return false;
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    } else if (!passwordRegex.test(formData.password)) {
+      newErrors.password =
+        "Password should be 8-16 characters, should contain a number, an uppercase and lowercase letter and a special character!";
+      isValid = false;
     }
 
-    return true;
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    if (!termsAccepted) {
+      newErrors.terms = "You must accept the terms and privacy policy";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setIsLoading(true);
-    setError("");
 
     try {
-      // This would be replaced with your actual API call to register an entrepreneur
-      const response = await fetch("/api/auth/signup/entrepreneur", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        `${Constant.baseURL}${ApiEndpoints.ORGANIZATION_SIGNUP}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to register");
+        throw new Error(data.error || "Failed to register");
       }
 
-      // Redirect to entrepreneur onboarding
-      router.push("/entrepreneur/onboarding");
+      toast.success(data.message || "Registration successful!");
+      setTimeout(() => {
+        router.push("/verify-email");
+      }, 2000);
     } catch (err) {
-      setError(err.message || "An error occurred during registration");
+      toast.error(err.message || "An error occurred during registration");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   return (
-    <div className="min-h-screen bg-green-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="md:flex">
-            {/* Left side - form */}
-            <div className="md:w-3/5 p-8">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-green-800">
-                  Create Your Entrepreneur Account
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  Join our marketplace to sell your DIY beauty products
-                </p>
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        background: Color.bgGradient.default,
+      }}
+    >
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
+      {/* Registration Form */}
+      <div
+        className="w-full max-w-5xl bg-white p-8 rounded-br-4xl rounded-tl-4xl shadow-md border transition-all duration-300 hover:shadow-lg animate-fadeIn"
+        style={{ borderColor: `${Color.secondary.default}30` }}
+      >
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-58 h-20 relative animate-pulse-subtle">
+            <Image
+              src={logo}
+              alt="Flare Her Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h2
+            className="text-xl font-bold"
+            style={{ color: Color.primary.default }}
+          >
+            Create Your Organization Account
+          </h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Personal Information */}
+            <div className="space-y-5">
+              <h3
+                className="text-lg font-semibold"
+                style={{ color: Color.primary.default }}
+              >
+                Personal Information
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div
+                  className="animate-slideInUp"
+                  style={{ animationDelay: "0.1s" }}
+                >
+                  <label
+                    htmlFor="firstName"
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: Color.text.default }}
+                  >
+                    First Name
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User
+                        className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                        style={{ color: `${Color.lightText.default}80` }}
+                      />
+                    </div>
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      required
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                      placeholder="Jane"
+                      style={{
+                        borderColor: errors.firstName
+                          ? "#f43f5e"
+                          : `${Color.secondary.default}50`,
+                        color: Color.text.default,
+                      }}
+                    />
+                  </div>
+                  {errors.firstName && (
+                    <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                      {errors.firstName}
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  className="animate-slideInUp"
+                  style={{ animationDelay: "0.1s" }}
+                >
+                  <label
+                    htmlFor="lastName"
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: Color.text.default }}
+                  >
+                    Last Name
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User
+                        className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                        style={{ color: `${Color.lightText.default}80` }}
+                      />
+                    </div>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      required
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                      placeholder="Doe"
+                      style={{
+                        borderColor: errors.lastName
+                          ? "#f43f5e"
+                          : `${Color.secondary.default}50`,
+                        color: Color.text.default,
+                      }}
+                    />
+                  </div>
+                  {errors.lastName && (
+                    <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                      {errors.lastName}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                  <p>{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Personal Information */}
-                <div>
-                  <h2 className="text-xl font-semibold text-green-700 mb-4">
-                    Personal Information
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label
-                        htmlFor="fullName"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Full Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Email Address <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="phone"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="password"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Password <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Minimum 8 characters
-                      </p>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="confirmPassword"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Confirm Password <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.2s" }}
+              >
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Email
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail
+                      className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
                   </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                    placeholder="your@email.com"
+                    style={{
+                      borderColor: errors.email
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
                 </div>
-
-                {/* Business Information */}
-                <div>
-                  <h2 className="text-xl font-semibold text-green-700 mb-4">
-                    Business Information
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label
-                        htmlFor="businessName"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Business Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="businessName"
-                        name="businessName"
-                        value={formData.businessName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="businessType"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Business Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        id="businessType"
-                        name="businessType"
-                        value={formData.businessType}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      >
-                        <option value="">Select business type</option>
-                        {businessTypes.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="experience"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Experience Level
-                      </label>
-                      <select
-                        id="experience"
-                        name="experience"
-                        value={formData.experience}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                      >
-                        <option value="">Select experience level</option>
-                        {experienceLevels.map((level) => (
-                          <option key={level} value={level}>
-                            {level}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product Categories */}
-                <div>
-                  <h2 className="text-xl font-semibold text-green-700 mb-4">
-                    Product Categories <span className="text-red-500">*</span>
-                  </h2>
-                  <p className="text-sm text-gray-600 mb-2">
-                    Select all that apply
+                {errors.email && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.email}
                   </p>
+                )}
+              </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {productCategories.map((category) => (
-                      <div key={category} className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id={`category-${category}`}
-                          name="productCategories"
-                          value={category}
-                          checked={formData.productCategories.includes(
-                            category
-                          )}
-                          onChange={handleChange}
-                          className="mt-1 h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <label
-                          htmlFor={`category-${category}`}
-                          className="ml-2 block text-sm text-gray-700"
-                        >
-                          {category}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Agreements */}
-                <div className="space-y-3">
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="agreeTerms"
-                      name="agreeTerms"
-                      checked={formData.agreeTerms}
-                      onChange={handleChange}
-                      className="mt-1 h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.25s" }}
+              >
+                <label
+                  htmlFor="phoneNumber"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Phone Number
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Phone
+                      className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
                     />
-                    <label
-                      htmlFor="agreeTerms"
-                      className="ml-2 block text-sm text-gray-700"
-                    >
-                      I agree to the{" "}
-                      <Link
-                        href="/terms"
-                        className="text-green-600 hover:text-green-500"
-                      >
-                        Terms and Conditions
-                      </Link>{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
                   </div>
-
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="agreeSellerPolicy"
-                      name="agreeSellerPolicy"
-                      checked={formData.agreeSellerPolicy}
-                      onChange={handleChange}
-                      className="mt-1 h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                    />
-                    <label
-                      htmlFor="agreeSellerPolicy"
-                      className="ml-2 block text-sm text-gray-700"
-                    >
-                      I agree to the{" "}
-                      <Link
-                        href="/seller-policy"
-                        className="text-green-600 hover:text-green-500"
-                      >
-                        Seller Policy
-                      </Link>{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                  </div>
+                  <input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    type="tel"
+                    required
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                    placeholder="1234567890"
+                    style={{
+                      borderColor: errors.phoneNumber
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
                 </div>
+                {errors.phoneNumber && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.phoneNumber}
+                  </p>
+                )}
+              </div>
 
-                {/* Submit Button */}
-                <div>
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.3s" }}
+              >
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock
+                      className="h-5 w-5 text-slate-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-10 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-300 transition-colors"
+                    placeholder="••••••••"
+                    style={{
+                      borderColor: errors.password
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
                   <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-pink-400 transition-colors"
+                    style={{ color: `${Color.lightText.default}80` }}
                   >
-                    {isLoading
-                      ? "Creating Account..."
-                      : "Create Entrepreneur Account"}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
-
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <Link
-                      href="/auth/Login"
-                      className="text-green-600 hover:text-green-500 font-medium"
-                    >
-                      Log in
-                    </Link>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.password}
                   </p>
+                )}
+              </div>
+
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.35s" }}
+              >
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Confirm Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock
+                      className="h-5 w-5 text-slate-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-10 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-300 transition-colors"
+                    placeholder="••••••••"
+                    style={{
+                      borderColor: errors.confirmPassword
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleConfirmPasswordVisibility}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-pink-400 transition-colors"
+                    style={{ color: `${Color.lightText.default}80` }}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
-              </form>
-            </div>
-
-            {/* Right side - information */}
-            <div className="md:w-2/5 bg-green-700 text-white p-8 flex flex-col justify-center">
-              <h2 className="text-2xl font-bold mb-4">
-                Benefits of Joining Our Marketplace
-              </h2>
-
-              <ul className="space-y-4">
-                <li className="flex">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>
-                    Reach a community of beauty enthusiasts looking for DIY
-                    products
-                  </span>
-                </li>
-                <li className="flex">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Low marketplace fees compared to other platforms</span>
-                </li>
-                <li className="flex">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Dedicated support for entrepreneurs</span>
-                </li>
-                <li className="flex">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>
-                    Access to resources, webinars, and community events
-                  </span>
-                </li>
-                <li className="flex">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Simple and intuitive seller dashboard</span>
-                </li>
-              </ul>
-
-              <div className="mt-8 bg-green-600 p-4 rounded-lg">
-                <h3 className="font-bold mb-2">
-                  Ready to grow your DIY beauty business?
-                </h3>
-                <p>
-                  Join thousands of entrepreneurs already selling on our
-                  platform!
-                </p>
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </div>
             </div>
+
+            {/* Business Information */}
+            <div className="space-y-5">
+              <h3
+                className="text-lg font-semibold"
+                style={{ color: Color.primary.default }}
+              >
+                Business Information
+              </h3>
+
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.4s" }}
+              >
+                <label
+                  htmlFor="businessName"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Business Name
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase
+                      className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
+                  </div>
+                  <input
+                    id="businessName"
+                    name="businessName"
+                    type="text"
+                    required
+                    value={formData.businessName}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                    placeholder="Your Business Name"
+                    style={{
+                      borderColor: errors.businessName
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
+                </div>
+                {errors.businessName && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.businessName}
+                  </p>
+                )}
+              </div>
+
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.45s" }}
+              >
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Business Address
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MapPin
+                      className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
+                  </div>
+                  <input
+                    id="address"
+                    name="address"
+                    required
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white placeholder-slate-400 transition-colors"
+                    placeholder="Your business address"
+                    style={{
+                      borderColor: errors.address
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  />
+                </div>
+                {errors.address && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.address}
+                  </p>
+                )}
+              </div>
+
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.5s" }}
+              >
+                <label
+                  htmlFor="businessType"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Business Type
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase
+                      className="h-5 w-5 text-slate-400 group-hover:text-pink-400 transition-colors"
+                      style={{ color: `${Color.lightText.default}80` }}
+                    />
+                  </div>
+                  <select
+                    id="businessType"
+                    name="businessType"
+                    required
+                    value={formData.businessType}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 bg-white transition-colors"
+                    style={{
+                      borderColor: errors.businessType
+                        ? "#f43f5e"
+                        : `${Color.secondary.default}50`,
+                      color: Color.text.default,
+                    }}
+                  >
+                    <option value="">Select Business Type</option>
+                    {businessTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.businessType && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.businessType}
+                  </p>
+                )}
+              </div>
+
+              <div
+                className="animate-slideInUp"
+                style={{ animationDelay: "0.55s" }}
+              >
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: Color.text.default }}
+                >
+                  Product Categories
+                </label>
+                <div
+                  className="grid grid-cols-2 gap-2 mt-2 border rounded-lg p-3"
+                  style={{
+                    borderColor: errors.productCategories
+                      ? "#f43f5e"
+                      : `${Color.secondary.default}50`,
+                  }}
+                >
+                  {productCategories.map((category) => (
+                    <div key={category} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`category-${category}`}
+                        name="productCategories"
+                        value={category}
+                        checked={formData.productCategories.includes(category)}
+                        onChange={handleChange}
+                        className="mr-2"
+                        style={{ accentColor: Color.primary.default }}
+                      />
+                      <label
+                        htmlFor={`category-${category}`}
+                        className="text-sm"
+                        style={{ color: Color.text.default }}
+                      >
+                        {category}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {errors.productCategories && (
+                  <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                    {errors.productCategories}
+                  </p>
+                )}
+              </div>
+
+              <div
+                className="flex items-start mt-6 animate-slideInUp"
+                style={{ animationDelay: "0.6s" }}
+              >
+                <div className="flex items-center h-5">
+                  <input
+                    id="terms"
+                    name="terms"
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="focus:ring-pink-500 h-4 w-4 text-pink-600 border-gray-300 rounded cursor-pointer"
+                    style={{ accentColor: Color.primary.default }}
+                  />
+                </div>
+                <div className="ml-3 text-sm">
+                  <label
+                    htmlFor="terms"
+                    style={{ color: Color.text.default }}
+                    className="cursor-pointer"
+                  >
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      className="underline font-medium"
+                      style={{ color: Color.primary.default }}
+                    >
+                      Terms and Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/privacy"
+                      className="underline font-medium"
+                      style={{ color: Color.primary.default }}
+                    >
+                      Privacy Policy
+                    </Link>
+                  </label>
+                </div>
+              </div>
+              {errors.terms && (
+                <p className="mt-1 text-sm text-rose-500 animate-fadeIn">
+                  {errors.terms}
+                </p>
+              )}
+            </div>
           </div>
+
+          <div
+            className="animate-slideInUp"
+            style={{ animationDelay: "0.65s" }}
+          >
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white transition-all duration-300 shadow-sm hover:shadow-md hover:opacity-90 active:scale-95 transform"
+              style={{
+                background: Color.gradient.default,
+                boxShadow: `0 4px 10px ${Color.primary.default}30`,
+              }}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Creating organization...
+                </span>
+              ) : (
+                "Create Organization Account"
+              )}
+            </button>
+          </div>
+        </form>
+
+        <div
+          className="mt-6 text-center animate-fadeIn"
+          style={{ animationDelay: "0.7s" }}
+        >
+          <p className="text-sm" style={{ color: Color.lightText.default }}>
+            Already have an account?{" "}
+            <Link
+              href="/auth/Login"
+              className="font-medium hover:text-pink-500 transition-colors"
+              style={{ color: Color.primary.default }}
+            >
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideInUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes pulse-subtle {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.03);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.8s ease-in-out forwards;
+        }
+
+        .animate-slideInUp {
+          animation: slideInUp 0.6s ease-out forwards;
+        }
+
+        .animate-pulse-subtle {
+          animation: pulse-subtle 3s infinite;
+        }
+      `}</style>
     </div>
   );
 }
