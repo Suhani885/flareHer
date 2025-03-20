@@ -13,7 +13,7 @@ export const Color = {
     default: "linear-gradient(to bottom right, #FEF1F4, #FCE3ED)",
   },
   text: {
-    default: "#AD1457",
+    default: "#000000",
   },
   lightText: {
     default: "#8A6980",

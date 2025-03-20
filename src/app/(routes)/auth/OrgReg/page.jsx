@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import {
   Eye,
@@ -57,7 +58,6 @@ export default function OrgReg() {
     "Small Business",
     "Established Brand",
     "Startup",
-    "Non-profit",
     "Enterprise",
   ];
 
@@ -194,29 +194,24 @@ export default function OrgReg() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${Constant.baseURL}${ApiEndpoints.ORGANIZATION_SIGNUP}`,
+      const response = await axios.post(
+        `${Constant.baseURL}${ApiEndpoints.ORG_REG}`,
+        formData,
         {
-          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to register");
-      }
-
-      toast.success(data.message || "Registration successful!");
+      toast.success(response.data.message || "Registration successful!");
       setTimeout(() => {
-        router.push("/verify-email");
+        router.push("/auth/Login");
       }, 2000);
-    } catch (err) {
-      toast.error(err.message || "An error occurred during registration");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.error || "An error occurred during registration"
+      );
     } finally {
       setIsLoading(false);
     }

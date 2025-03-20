@@ -3,16 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  User,
-  Calendar,
-  MapPin,
-  Phone,
-} from "lucide-react";
+import axios from "axios";
+import { Eye, EyeOff, Mail, Lock, Calendar, MapPin, Phone } from "lucide-react";
 import Image from "next/image";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -136,38 +128,33 @@ export default function UserReg() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${Constant.baseURL}${ApiEndpoints.SIGNUP}`,
+      const response = await axios.post(
+        `${Constant.baseURL}${ApiEndpoints.USER_REG}`,
         {
-          method: "POST",
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          birthdate: formData.birthdate,
+          address: formData.address,
+          gender: formData.gender,
+          phoneNumber: formData.phoneNumber,
+        },
+        {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            password: formData.password,
-            birthdate: formData.birthdate,
-            address: formData.address,
-            gender: formData.gender,
-            phoneNumber: formData.phoneNumber,
-          }),
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to register");
-      }
-
-      toast.success(data.message || "Registration successful!");
+      toast.success(response.data.message || "Registration successful!");
       setTimeout(() => {
-        router.push("/verify-email");
+        router.push("/auth/Login");
       }, 2000);
-    } catch (err) {
-      toast.error(err.message || "An error occurred during registration");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.error || "An error occurred during registration"
+      );
     } finally {
       setIsLoading(false);
     }

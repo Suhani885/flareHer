@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Image from "next/image";
 import { toast, ToastContainer } from "react-toastify";
@@ -11,7 +12,7 @@ import logo from "../../../../../public/logo.png";
 import { Color } from "../../../utils/Colors";
 import { Constant, ApiEndpoints } from "../../../utils/ApiConst";
 
-export default function LoginPage() {
+export default function Login() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -72,26 +73,24 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${Constant.baseURL}${ApiEndpoints.LOGIN}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await axios.post(
+        `${Constant.baseURL}${ApiEndpoints.LOGIN}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to login");
-      }
-
-      toast.success(data.message || "Login successful!");
+      toast.success(response.data.message || "Login successful!");
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/ai-analysis/skinType");
       }, 2000);
-    } catch (err) {
-      toast.error(err.message || "An error occurred during login");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.error || "An error occurred during login"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -437,11 +436,11 @@ export default function LoginPage() {
             <p className="text-sm" style={{ color: Color.lightText.default }}>
               Don't have an account?{" "}
               <Link
-                href="/auth/signup"
+                href="/auth/UserReg"
                 className="font-medium hover:text-pink-500 transition-colors"
                 style={{ color: Color.primary.default }}
               >
-                Create account
+                Create here
               </Link>
             </p>
           </div>
